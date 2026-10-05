@@ -1,0 +1,20 @@
+[project]
+name = "er-diagram-generator"
+version = "0.1.0"
+description = "script for generating ER digrams from json"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=2.28.0",
+    "graphviz>=0.21",
+    "pydantic>=2.13.4",
+]
+
+[dependency-groups]
+dev = [
+    "devtools>=0.12.2",
+    "ruff>=0.16.0",
+]
+
+[tool.ruff.lint]
+extend-select = ["PL", "UP", "PERF", "RUF"]
