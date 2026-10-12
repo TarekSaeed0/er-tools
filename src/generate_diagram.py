@@ -3,6 +3,7 @@ from pathlib import Path
 
 from graphviz import Graph
 from graphviz.dot import Dot
+from graphviz.rendering import Render
 from pydantic import ValidationError
 
 from models import (
@@ -24,7 +25,7 @@ def draw_model(dot: Dot, model: Model):
         draw_relationship(dot, relationship)
 
 
-def draw_entity(dot: Dot, entity: Entity):
+def draw_entity(dot: Dot, entity: Entity) -> None:
     entity_id = entity.name
 
     dot.node(
@@ -37,7 +38,7 @@ def draw_entity(dot: Dot, entity: Entity):
         draw_attribute(dot, entity_id, attribute)
 
 
-def draw_relationship(dot: Dot, relationship: Relationship):
+def draw_relationship(dot: Dot, relationship: Relationship) -> None:
     relationship_id = f"{relationship.name}-{'-'.join(p.entity_name for p in relationship.participations)}"
 
     dot.node(
@@ -65,7 +66,7 @@ def draw_participation(
     relationship_id: str,
     participation: Participation,
     many_participations_before: int,
-):
+) -> None:
     entity_id = participation.entity_name
 
     label: str
@@ -87,7 +88,7 @@ def draw_participation(
         dot.edge(relationship_id, entity_id, label=label)
 
 
-def draw_attribute(dot: Dot, owner_id: str, attribute: Attribute):
+def draw_attribute(dot: Dot, owner_id: str, attribute: Attribute) -> None:
     attribute_id = f"{owner_id}-{attribute.name}"
 
     dot.node(
@@ -116,9 +117,19 @@ def draw_attribute(dot: Dot, owner_id: str, attribute: Attribute):
     dot.edge(owner_id, attribute_id, len="0.5")
 
 
-def main():
+def generate_diagram(model: Model) -> Render:
+    dot = Graph(engine="neato")
+
+    dot.attr(overlap="false", splines="true", esep="+12")
+
+    draw_model(dot, model)
+
+    return dot
+
+
+def main() -> None:
     parser = argparse.ArgumentParser(
-        prog="generate-diagram",
+        prog="generate_diagram",
         description="script for generating ER digrams from json",
     )
     parser.add_argument("filename", type=Path)
@@ -134,15 +145,9 @@ def main():
     except ValidationError as e:
         parser.error(f"invalid ER Model:\n{e}")
 
-    dot = Graph("ER Diagram", engine="neato", format="png")
+    diagram = generate_diagram(model)
 
-    dot.attr(overlap="false")
-    dot.attr(mode="KK")
-    dot.attr(maxiter="100000")
-
-    draw_model(dot, model)
-
-    dot.render(f"diagrams/{filename.stem}", view=True, cleanup=True)
+    diagram.render(f"diagrams/{filename.stem}", format="png", view=True, cleanup=True)
 
 
 if __name__ == "__main__":

@@ -1,20 +1,34 @@
 [project]
-name = "er-diagram-generator"
+name = "er-tools"
 version = "0.1.0"
-description = "script for generating ER digrams from json"
+description = "tools for working with ER models"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "google-genai>=2.28.0",
-    "graphviz>=0.21",
-    "pydantic>=2.13.4",
+	"flet>=1.0.4",
+	"flet-secure-storage>=1.0.4",
+	"google-genai>=2.28.0",
+	"graphviz>=0.21",
+	"pydantic>=2.13.4",
 ]
 
 [dependency-groups]
 dev = [
-    "devtools>=0.12.2",
-    "ruff>=0.16.0",
+	"devtools>=0.12.2",
+	"flet-cli>=1.0.4",
+	"flet-desktop>=1.0.4",
+	"ruff>=0.16.0",
 ]
 
 [tool.ruff.lint]
 extend-select = ["PL", "UP", "PERF", "RUF"]
+
+[tool.flet]
+org = "com.github.tareksaeed0"
+product = "ER Tools"
+
+[tool.flet.android]
+split_per_abi = true
+
+[tool.flet.app]
+path = "src"

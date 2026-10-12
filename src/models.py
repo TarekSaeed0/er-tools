@@ -28,13 +28,17 @@ class Attribute(BaseModel):
             raise ValueError(
                 f'Attribute "{self.name}" can\'t be both a primary key and a partial key'
             )
+
+        if self.is_multivalued and (self.is_primary_key or self.is_partial_key):
+            raise ValueError(f'Multivalued attribute "{self.name}" can\'t be a key')
+
         return self
 
 
 class Entity(BaseModel):
     name: str
     is_weak: bool = False
-    attributes: list[Attribute] = []
+    attributes: list[Attribute] = Field(min_length=1)
 
     @field_validator("attributes")
     @classmethod
@@ -121,14 +125,6 @@ class Model(BaseModel):
 
             if relationship.is_identifying:
                 if not any(
-                    not entity_map[p.entity_name].is_weak
-                    for p in relationship.participations
-                ):
-                    raise ValueError(
-                        f'Identifying relationship "{relationship.name}" must have at least one strong entity participating'
-                    )
-
-                if not any(
                     entity_map[p.entity_name].is_weak
                     for p in relationship.participations
                 ):
@@ -136,26 +132,42 @@ class Model(BaseModel):
                         f'Identifying relationship "{relationship.name}" must have at least one weak entity participating'
                     )
 
+        strong_entities = [e.name for e in self.entities if not e.is_weak]
         weak_entities = {e.name for e in self.entities if e.is_weak}
 
-        identifying_relationship_participants = {
-            p.entity_name
-            for r in self.relationships
-            for p in r.participations
-            if r.is_identifying
-        }
+        identifying_links = {e.name: set[str]() for e in self.entities}
 
-        missing_identifying_relationship = (
-            weak_entities - identifying_relationship_participants
-        )
+        for r in self.relationships:
+            if r.is_identifying:
+                for p in r.participations:
+                    identifying_links[p.entity_name].update(
+                        q.entity_name
+                        for q in r.participations
+                        if q != p
+                        and q.constraint == ParticipationConstraint.TOTAL
+                        and q.entity_name in weak_entities
+                    )
 
-        if missing_identifying_relationship:
-            missing_names = ", ".join(
-                f'"{name}"' for name in missing_identifying_relationship
+        visited = set[str]()
+        stack = strong_entities
+
+        while stack:
+            current = stack.pop()
+
+            if current in visited:
+                continue
+
+            visited.add(current)
+
+            stack.extend(e for e in identifying_links[current] if e not in visited)
+
+        unidentified_weak_entites = weak_entities - visited
+        if unidentified_weak_entites:
+            unidentified_weak_entity_names = ", ".join(
+                f'"{name}"' for name in unidentified_weak_entites
             )
-
             raise ValueError(
-                f"Weak entities {missing_names} must participate in at least one identifying relationship"
+                f"Weak entities {unidentified_weak_entity_names} must directly or indirectly depend on a strong entity"
             )
 
         return self
