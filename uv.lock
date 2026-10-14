@@ -2,8 +2,10 @@ version = 1
 revision = 5
 requires-python = ">=3.12"
 resolution-markers = [
-    "python_full_version >= '3.14'",
-    "python_full_version < '3.14'",
+    "(python_full_version >= '3.14' and platform_machine != 'ARM64') or (python_full_version >= '3.14' and sys_platform != 'win32')",
+    "python_full_version >= '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
+    "(python_full_version < '3.14' and platform_machine != 'ARM64') or (python_full_version < '3.14' and sys_platform != 'win32')",
+    "python_full_version < '3.14' and platform_machine == 'ARM64' and sys_platform == 'win32'",
 ]
 
 [[package]]
@@ -429,6 +431,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "flet" },
     { name = "flet-secure-storage" },
+    { name = "flet-webview" },
     { name = "google-genai" },
     { name = "graphviz" },
     { name = "pydantic" },
@@ -446,6 +449,7 @@ dev = [
 requires-dist = [
     { name = "flet", specifier = ">=1.0.4" },
     { name = "flet-secure-storage", specifier = ">=1.0.4" },
+    { name = "flet-webview", specifier = ">=1.0.4" },
     { name = "google-genai", specifier = ">=2.28.0" },
     { name = "graphviz", specifier = ">=0.21" },
     { name = "pydantic", specifier = ">=2.13.4" },
@@ -538,6 +542,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ff/80/2a88d2ce58e425fda1bbe743daa2aab34d98adae69dde8f1a767e8cdd9ff/flet_secure_storage-1.0.4.tar.gz", hash = "sha256:77240d9a2f8d529d8bb50fffc1494ac1b7cad68d6c7517ebd6741d6ad59116d7", size = 15977, upload-time = "2026-10-08T22:25:53.044Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/47/74/f324dd2b6af478b9d6960fdfdd34c7a192fc30653ef83c97f55bf8d44071/flet_secure_storage-1.0.4-py3-none-any.whl", hash = "sha256:55db99b025ffaa9d811ab2c12cf4b689297ac47b48fcbccc0eeff615db9dfd72", size = 16669, upload-time = "2026-10-08T22:25:52.047Z" },
+]
+
+[[package]]
+name = "flet-webview"
+version = "1.0.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flet" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/86/c1/918d52c442fb4decd9f32ac1574d766fec816bf6be73b48f23d9ae9faa90/flet_webview-1.0.4.tar.gz", hash = "sha256:4f5c6bebc6ad1458ef8a5b988ef471b3a83ad63ec8d3db1a8e56a5565c832d26", size = 14636, upload-time = "2026-10-08T22:26:00.152Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c9/d6/70d10c7e346751b4121bc7cffc4270a2076b288b74d38691ce7606a5b5a3/flet_webview-1.0.4-py3-none-any.whl", hash = "sha256:9f2f461b1dbdcdcc1d7d9da64ea3a14b8f59c70c21af6e4519b8cd4b992110f5", size = 18344, upload-time = "2026-10-08T22:25:59.271Z" },
 ]
 
 [[package]]

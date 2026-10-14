@@ -221,6 +221,3 @@ __marimo__/
 
 models/
 diagrams/
-
-# FVM Version Cache
-.fvm/

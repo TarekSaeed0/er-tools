@@ -7,10 +7,15 @@ requires-python = ">=3.12"
 dependencies = [
 	"flet>=1.0.4",
 	"flet-secure-storage>=1.0.4",
+	"flet-webview>=1.0.4",
 	"google-genai>=2.28.0",
 	"graphviz>=0.21",
 	"pydantic>=2.13.4",
 ]
+
+[project.scripts]
+generate-model = "scripts.generate_model:main"
+generate-diagram = "scripts.generate_diagram:main"
 
 [dependency-groups]
 dev = [
@@ -19,6 +24,10 @@ dev = [
 	"flet-desktop>=1.0.4",
 	"ruff>=0.16.0",
 ]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
 
 [tool.ruff.lint]
 extend-select = ["PL", "UP", "PERF", "RUF"]

@@ -1,10 +1,10 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, field_validator, model_validator, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class Attribute(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     is_primary_key: bool = False
     is_partial_key: bool = False
     is_multivalued: bool = False
@@ -16,9 +16,10 @@ class Attribute(BaseModel):
     def validate_sub_attributes(
         cls, sub_attributes: list["Attribute"] | None
     ) -> list["Attribute"] | None:
-        if sub_attributes is not None:
-            if len(sub_attributes) != len(set(a.name for a in sub_attributes)):
-                raise ValueError("Sub-attributes must be unique")
+        if sub_attributes is not None and len(sub_attributes) != len(
+            {a.name for a in sub_attributes}
+        ):
+            raise ValueError("Sub-attributes must be unique")
 
         return sub_attributes
 
@@ -36,7 +37,7 @@ class Attribute(BaseModel):
 
 
 class Entity(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     is_weak: bool = False
     attributes: list[Attribute] = Field(min_length=1)
 
@@ -80,17 +81,28 @@ class ParticipationConstraint(StrEnum):
 
 
 class Participation(BaseModel):
-    entity_name: str
+    entity_name: str = Field(min_length=1)
     role: str | None = None
     cardinality: Cardinality = Cardinality.MANY
     constraint: ParticipationConstraint = ParticipationConstraint.PARTIAL
 
 
 class Relationship(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     is_identifying: bool = False
     participations: list[Participation] = Field(min_length=2)
     attributes: list[Attribute] = []
+
+    @field_validator("participations")
+    @classmethod
+    def validate_participations(
+        cls, participations: list[Participation]
+    ) -> list[Participation]:
+        roles = [p.role for p in participations if p.role is not None]
+        if len(roles) != len(set(roles)):
+            raise ValueError("Participations roles must be unique")
+
+        return participations
 
     @field_validator("attributes")
     @classmethod
@@ -123,14 +135,12 @@ class Model(BaseModel):
                         f'Relationship "{relationship.name}" references an unknown entity "{participant.entity_name}"'
                     )
 
-            if relationship.is_identifying:
-                if not any(
-                    entity_map[p.entity_name].is_weak
-                    for p in relationship.participations
-                ):
-                    raise ValueError(
-                        f'Identifying relationship "{relationship.name}" must have at least one weak entity participating'
-                    )
+            if relationship.is_identifying and not any(
+                entity_map[p.entity_name].is_weak for p in relationship.participations
+            ):
+                raise ValueError(
+                    f'Identifying relationship "{relationship.name}" must have at least one weak entity participating'
+                )
 
         strong_entities = [e.name for e in self.entities if not e.is_weak]
         weak_entities = {e.name for e in self.entities if e.is_weak}

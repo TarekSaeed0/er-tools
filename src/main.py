@@ -1,9 +1,9 @@
 import flet as ft
 
-from contexts.settings import SettingsContext
-from screens.generate_model import GenerateModelScreen
-from screens.generate_diagram import GenerateDiagramScreen
-from screens.settings import SettingsScreen
+from contexts.settings_context import SettingsContext
+from screens.generate_model_screen import GenerateModelScreen
+from screens.generate_diagram_screen import GenerateDiagramScreen
+from screens.settings_screen import SettingsScreen
 
 
 DESTINATIONS = [

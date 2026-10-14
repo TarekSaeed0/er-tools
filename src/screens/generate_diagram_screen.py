@@ -1,13 +1,11 @@
 import asyncio
-import tempfile
-import uuid
 from pathlib import Path
 
 import flet as ft
 from pydantic import ValidationError
 
-from generate_diagram import generate_diagram
 from models import Model
+from services.diagram_renderer import create_diagram_renderer
 from utils import show_error
 
 ZOOM_STEP = 1.25
@@ -15,17 +13,13 @@ ZOOM_STEP = 1.25
 
 @ft.component
 def GenerateDiagramScreen() -> ft.Control:
-    json_path, set_json_path = ft.use_state("")
+    input_path, set_input_path = ft.use_state("")
+    input_bytes, set_input_bytes = ft.use_state(b"")
     output_path, set_output_path = ft.use_state("")
-    status, set_status = ft.use_state("")
+    output_bytes, set_output_bytes = ft.use_state(b"")
     is_loading, set_is_loading = ft.use_state(False)
-    preview_file_path, set_preview_file_path = ft.use_state("")
-
+    renderer_ref = ft.use_ref(create_diagram_renderer)
     viewer_ref = ft.Ref[ft.InteractiveViewer]()
-
-    def cleanup_preview():
-        if preview_file_path:
-            Path(preview_file_path).unlink(missing_ok=True)
 
     async def on_browse(e: ft.Event[ft.OutlinedButton]):
         files = await ft.FilePicker().pick_files(
@@ -33,72 +27,52 @@ def GenerateDiagramScreen() -> ft.Control:
             file_type=ft.FilePickerFileType.CUSTOM,
             allowed_extensions=["json"],
             allow_multiple=False,
+            with_data=True,
         )
 
-        if not files or not files[0].path:
+        if not files or not files[0] or not files[0].bytes:
             return
 
-        file_path = files[0].path
-        set_json_path(file_path)
-        set_status("")
+        set_input_path(files[0].path or files[0].name)
+        set_input_bytes(files[0].bytes)
 
     async def on_choose_output(e: ft.Event[ft.OutlinedButton]):
-        default_name = f"{Path(json_path).stem}.png" if json_path else "diagram.png"
-
-        image_bytes = Path(preview_file_path).read_bytes()
+        default_name = f"{Path(input_path).stem}.png" if input_path else "diagram.png"
 
         path = await ft.FilePicker().save_file(
             dialog_title="Save ER diagram",
             file_name=default_name,
             file_type=ft.FilePickerFileType.CUSTOM,
             allowed_extensions=["png"],
-            src_bytes=image_bytes,
+            src_bytes=output_bytes,
         )
 
-        if path and preview_file_path:
+        if path and output_bytes:
             set_output_path(path)
-            set_status(f"Saved to {path}")
-
-    def render_diagram_blocking(filename: Path) -> str:
-        model = Model.model_validate_json(filename.read_text())
-
-        render = generate_diagram(model)
-
-        temporary_file_path = (
-            Path(tempfile.gettempdir()) / f"er_diagram_{uuid.uuid4().hex}"
-        )
-
-        saved = render.render(
-            str(temporary_file_path), format="png", view=False, cleanup=True
-        )
-
-        return saved
 
     async def on_generate(e: ft.Event[ft.Button]):
-        if not json_path:
+        assert renderer_ref.current is not None
+
+        if not input_bytes:
             show_error("Please select a JSON file first")
             return
 
-        filename = Path(json_path)
-
         set_is_loading(True)
-        set_status("Generating diagram...")
 
         try:
-            preview_path = await asyncio.to_thread(render_diagram_blocking, filename)
-        except FileNotFoundError:
-            set_status("File not found")
-            show_error(f"File not found: {filename}")
+            model = Model.model_validate_json(input_bytes)
+
+            output_bytes = await asyncio.to_thread(renderer_ref.current.render, model)
         except ValidationError as error:
-            set_status("Invalid ER model")
             show_error(f"Invalid ER model:\n{error}")
         except Exception as error:
-            set_status("Generation failed")
             show_error(f"Failed to generate diagram: {error}")
         else:
-            cleanup_preview()
-            set_preview_file_path(preview_path)
-            set_status("Diagram generated")
+            set_output_bytes(output_bytes)
+
+            if viewer_ref.current:
+                await viewer_ref.current.reset()
+
         finally:
             set_is_loading(False)
 
@@ -115,7 +89,7 @@ def GenerateDiagramScreen() -> ft.Control:
             await viewer_ref.current.reset()
 
     controls = [
-        ft.Text("Generate ER diagram from JSON", size=20, weight=ft.FontWeight.BOLD),
+        ft.Text("Generate ER diagram from JSON", size=20),
         ft.Text(
             "Select a JSON file describing an ER model, then click generate to generate an ER diagram.",
             color=ft.Colors.GREY_600,
@@ -124,7 +98,7 @@ def GenerateDiagramScreen() -> ft.Control:
             [
                 ft.TextField(
                     label="ER model JSON file",
-                    value=json_path,
+                    value=input_path,
                     read_only=True,
                     expand=True,
                 ),
@@ -140,15 +114,14 @@ def GenerateDiagramScreen() -> ft.Control:
                 ft.FilledButton(
                     "Generate Diagram",
                     on_click=on_generate,
-                    disabled=is_loading,
+                    disabled=is_loading or not input_bytes,
                 ),
                 ft.ProgressRing(visible=is_loading, width=20, height=20),
-                ft.Text(status, size=13),
             ]
         ),
     ]
 
-    if preview_file_path:
+    if output_bytes:
         controls.extend(
             [
                 ft.Row(
@@ -193,7 +166,7 @@ def GenerateDiagramScreen() -> ft.Control:
                 ft.Container(
                     ft.InteractiveViewer(
                         ref=viewer_ref,
-                        content=ft.Image(src=preview_file_path, fit=ft.BoxFit.CONTAIN),
+                        content=ft.Image(src=output_bytes, fit=ft.BoxFit.CONTAIN),
                         min_scale=0.1,
                         max_scale=10,
                         boundary_margin=ft.Margin.all(100),

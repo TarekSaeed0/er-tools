@@ -2,22 +2,22 @@ import asyncio
 
 import flet as ft
 
-from contexts.settings import SettingsContext
-from generate_model import generate_model
+from contexts.settings_context import SettingsContext
+from services.model_generator import create_model_generator
 from utils import show_error
 
 
 @ft.component
 def GenerateModelScreen() -> ft.Control:
     settings = ft.use_context(SettingsContext)
-    output_path, set_output_path = ft.use_state("")
     description, set_description = ft.use_state("")
-    result, set_result = ft.use_state("")
-    status, set_status = ft.use_state("")
+    output_path, set_output_path = ft.use_state("")
+    output, set_output = ft.use_state("")
     is_loading, set_is_loading = ft.use_state(False)
+    generator_ref = ft.use_ref(create_model_generator)
 
     async def on_choose_output(e: ft.Event[ft.OutlinedButton]):
-        if not result:
+        if not output:
             return
 
         path = await ft.FilePicker().save_file(
@@ -25,14 +25,15 @@ def GenerateModelScreen() -> ft.Control:
             file_name="model.json",
             file_type=ft.FilePickerFileType.CUSTOM,
             allowed_extensions=["json"],
-            src_bytes=result.encode(),
+            src_bytes=output.encode(),
         )
 
         if path:
             set_output_path(path)
-            set_status(f"Saved to {path}")
 
     async def on_generate(e: ft.Event[ft.Button]):
+        assert generator_ref.current is not None
+
         if not settings.gemini_api_key:
             show_error("Please enter your Gemini API key in the Settings tab first")
             return
@@ -43,31 +44,28 @@ def GenerateModelScreen() -> ft.Control:
             return
 
         set_is_loading(True)
-        set_status("Generating model...")
 
         try:
-            model_json = await asyncio.to_thread(
-                generate_model, trimmed_description, settings.gemini_api_key
+            model = await asyncio.to_thread(
+                generator_ref.current.generate,
+                trimmed_description,
+                settings.gemini_api_key,
             )
         except Exception as error:
-            set_status("Generation failed")
             show_error(f"Failed to generate model: {error}")
         else:
-            set_result(model_json)
-            set_status("Model generated")
+            set_output(model.model_dump_json(indent=2))
         finally:
             set_is_loading(False)
 
     controls = [
-        ft.Text(
-            "Generate ER model from description", size=20, weight=ft.FontWeight.BOLD
-        ),
+        ft.Text("Generate ER model from description", size=20),
         ft.Text(
             "Describe your requirements in natural language, then click generate to generate a JSON describing an ER model.",
             color=ft.Colors.GREY_600,
         ),
         ft.TextField(
-            label="Requirement description",
+            label="Requirement Description",
             align_label_with_hint=True,
             multiline=True,
             min_lines=6,
@@ -85,12 +83,11 @@ def GenerateModelScreen() -> ft.Control:
                     disabled=is_loading,
                 ),
                 ft.ProgressRing(visible=is_loading, width=20, height=20),
-                ft.Text(status, size=13),
             ]
         ),
     ]
 
-    if result:
+    if output:
         controls.extend(
             [
                 ft.Row(
@@ -109,13 +106,13 @@ def GenerateModelScreen() -> ft.Control:
                     ]
                 ),
                 ft.TextField(
-                    label="Generated model (JSON)",
+                    label="Generated Model",
                     multiline=True,
                     min_lines=8,
                     max_lines=12,
                     expand=True,
                     read_only=True,
-                    value=result,
+                    value=output,
                 ),
             ]
         )

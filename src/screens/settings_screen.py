@@ -1,6 +1,6 @@
 import flet as ft
 
-from contexts.settings import SettingsContext
+from contexts.settings_context import SettingsContext
 
 
 @ft.component
@@ -19,23 +19,23 @@ def SettingsScreen() -> ft.Control:
         await settings.set_theme_mode(ft.ThemeMode(e.control.selected[0]))
 
     controls = [
-        ft.Text("Theme Mode", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("Theme", size=16),
         ft.SegmentedButton(
             segments=[
                 ft.Segment(
                     value=ft.ThemeMode.SYSTEM.value,
                     label=ft.Text("System"),
-                    icon=ft.Icon(ft.Icons.SETTINGS),
+                    icon=ft.Icon(ft.Icons.CONTRAST),
                 ),
                 ft.Segment(
                     value=ft.ThemeMode.LIGHT.value,
                     label=ft.Text("Light"),
-                    icon=ft.Icon(ft.Icons.WB_SUNNY_OUTLINED),
+                    icon=ft.Icon(ft.Icons.LIGHT_MODE_OUTLINED),
                 ),
                 ft.Segment(
                     value=ft.ThemeMode.DARK.value,
                     label=ft.Text("Dark"),
-                    icon=ft.Icon(ft.Icons.NIGHTLIGHT_ROUND),
+                    icon=ft.Icon(ft.Icons.DARK_MODE_OUTLINED),
                 ),
             ],
             selected=[settings.theme_mode.value],
@@ -43,7 +43,7 @@ def SettingsScreen() -> ft.Control:
             allow_empty_selection=False,
             allow_multiple_selection=False,
         ),
-        ft.Text("Gemini API Key", size=16, weight=ft.FontWeight.BOLD),
+        ft.Text("Gemini API Key", size=16),
         ft.Row(
             [
                 ft.TextField(
